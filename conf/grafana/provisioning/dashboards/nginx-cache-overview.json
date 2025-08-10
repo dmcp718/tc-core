@@ -462,7 +462,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 27
       },
       "id": 105,
       "fieldConfig": {
@@ -634,7 +634,7 @@
       "title": "Cache Node Details",
       "description": "Per-node cache statistics",
       "gridPos": {
-        "h": 8,
+        "h": 5,
         "w": 12,
         "x": 0,
         "y": 22
@@ -663,7 +663,7 @@
       },
       "targets": [
         {
-          "expr": "nginx_cache_object_count",
+          "expr": "nginx_cache_object_count > 0",
           "format": "table",
           "instant": true,
           "legendFormat": "{{node}}",
@@ -686,79 +686,6 @@
               "Value": "Objects Cached"
             }
           }
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Container Network Throughput",
-      "description": "Docker container network statistics",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 22
-      },
-      "id": 108,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "fillOpacity": 5,
-            "gradientMode": "opacity",
-            "spanNulls": false,
-            "showPoints": "never",
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": "",
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "unit": "bps",
-          "decimals": 0
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
-        }
-      },
-      "targets": [
-        {
-          "expr": "rate(network_interface_rx_bytes{interface=~\"nginx-cache-.*\"}[1m]) * 8",
-          "legendFormat": "{{interface}} RX",
-          "refId": "A"
-        },
-        {
-          "expr": "rate(network_interface_tx_bytes{interface=~\"nginx-cache-.*\"}[1m]) * 8",
-          "legendFormat": "{{interface}} TX",
-          "refId": "B"
         }
       ]
     }

@@ -7,12 +7,7 @@ scrape_configs:
     static_configs:
       - targets: ["prometheus:9090"]
 
-  - job_name: nginx-cache-exporters
-    metrics_path: /metrics
-    static_configs:
-      - targets:
-          - exporter-cache-1:9113
-          - exporter-cache-2:9113
+  # Removed redundant nginx-cache-exporters - cache-metrics-exporter provides all cache stats
 
   - job_name: nginx-lb
     metrics_path: /metrics

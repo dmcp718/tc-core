@@ -25,6 +25,7 @@ services:
       - "8081:80"
     cpus: '10'
     mem_limit: '28g'
+    shm_size: '2g'
     deploy:
       resources:
         limits:
@@ -49,6 +50,7 @@ services:
       - "8082:80"
     cpus: '10'
     mem_limit: '28g'
+    shm_size: '2g'
     deploy:
       resources:
         limits:
@@ -105,21 +107,6 @@ services:
     depends_on:
       - nginx-cache-1
       - nginx-cache-2
-      
-  # NGINX exporters scraping stub_status endpoints from each cache node
-  exporter-cache-1:
-    image: nginx/nginx-prometheus-exporter:0.11.0
-    restart: unless-stopped
-    command: -nginx.scrape-uri http://nginx-cache-1/cache-stats
-    ports:
-      - "9113:9113"
-      
-  exporter-cache-2:
-    image: nginx/nginx-prometheus-exporter:0.11.0
-    restart: unless-stopped
-    command: -nginx.scrape-uri http://nginx-cache-2/cache-stats
-    ports:
-      - "9114:9113"
 
   # Node Exporter for host metrics
   node-exporter:
