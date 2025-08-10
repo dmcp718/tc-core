@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # Load Balancer
+  nginx-lb:
+    image: nginx:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./nginx-lb-2node.conf:/etc/nginx/nginx.conf:ro
+    cpus: '2'
+    mem_limit: '2g'
+    ulimits:
+      nofile: 1048576
+
+  # Cache Node 1 - nvme1n1 (disk1, disk2)
+  nginx-cache-1:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cache-2node.conf:/etc/nginx/nginx.conf:ro
+      - /mnt/disk1:/cache/disk1
+      - /mnt/disk2:/cache/disk2
+    ports:
+      - "8081:80"
+    cpus: '10'
+    mem_limit: '28g'
+    deploy:
+      resources:
+        limits:
+          cpus: '10'
+          memory: 28G
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_tw_reuse=1
+    ulimits:
+      nofile: 1048576
+      nproc: 65535
+
+  # Cache Node 2 - nvme4n1 (disk3, disk4)
+  nginx-cache-2:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cache-2node.conf:/etc/nginx/nginx.conf:ro
+      - /mnt/disk3:/cache/disk1  # Mapped to disk1 for consistency
+      - /mnt/disk4:/cache/disk2  # Mapped to disk2 for consistency
+    ports:
+      - "8082:80"
+    cpus: '10'
+    mem_limit: '28g'
+    deploy:
+      resources:
+        limits:
+          cpus: '10'
+          memory: 28G
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_tw_reuse=1
+    ulimits:
+      nofile: 1048576
+      nproc: 65535
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    mem_limit: '1g'
+
+  # Monitoring - Grafana  
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./conf/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./conf/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    mem_limit: '1g'
+
+  # Custom cache disk metrics exporter
+  cache-metrics-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.cache-exporter
+    restart: unless-stopped
+    ports:
+      - "9199:9199"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt:/mnt:ro
+      - /proc:/host/proc:ro
+    depends_on:
+      - nginx-cache-1
+      - nginx-cache-2
+      
+  # NGINX exporters scraping stub_status endpoints from each cache node
+  exporter-cache-1:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    restart: unless-stopped
+    command: -nginx.scrape-uri http://nginx-cache-1/cache-stats
+    ports:
+      - "9113:9113"
+      
+  exporter-cache-2:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    restart: unless-stopped
+    command: -nginx.scrape-uri http://nginx-cache-2/cache-stats
+    ports:
+      - "9114:9113"
+
+  # Node Exporter for host metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'

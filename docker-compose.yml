@@ -1,0 +1,208 @@
+# docker-compose.yml - Scaled deployment for 100TB+
+version: '3.8'
+
+services:
+  # Load Balancer
+  nginx-lb:
+    image: nginx:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - nginx-cache-1
+      - nginx-cache-2
+      - nginx-cache-3
+      - nginx-cache-4
+    cpus: '4'
+    mem_limit: '4g'
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+    ulimits:
+      nofile: 1048576
+
+  # Cache nodes with dedicated storage
+  nginx-cache-1:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cache.conf:/etc/nginx/nginx.conf:ro
+      - /mnt/cache1/disk1:/cache/disk1
+      - /mnt/cache1/disk2:/cache/disk2
+      - /mnt/cache1/disk3:/cache/disk3
+      - /mnt/cache1/disk4:/cache/disk4
+    ports:
+      - "8081:80"
+    cpus: '5'
+    mem_limit: '12g'
+    deploy:
+      resources:
+        limits:
+          cpus: '5'
+          memory: 12G
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_tw_reuse=1
+    ulimits:
+      nofile: 1048576
+
+  nginx-cache-2:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cache.conf:/etc/nginx/nginx.conf:ro
+      - /mnt/cache2/disk1:/cache/disk1
+      - /mnt/cache2/disk2:/cache/disk2
+      - /mnt/cache2/disk3:/cache/disk3
+      - /mnt/cache2/disk4:/cache/disk4
+    ports:
+      - "8082:80"
+    cpus: '5'
+    mem_limit: '12g'
+    deploy:
+      resources:
+        limits:
+          cpus: '5'
+          memory: 12G
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_tw_reuse=1
+    ulimits:
+      nofile: 1048576
+
+  nginx-cache-3:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cache.conf:/etc/nginx/nginx.conf:ro
+      - /mnt/cache3/disk1:/cache/disk1
+      - /mnt/cache3/disk2:/cache/disk2
+      - /mnt/cache3/disk3:/cache/disk3
+      - /mnt/cache3/disk4:/cache/disk4
+    ports:
+      - "8083:80"
+    cpus: '5'
+    mem_limit: '12g'
+    deploy:
+      resources:
+        limits:
+          cpus: '5'
+          memory: 12G
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_tw_reuse=1
+    ulimits:
+      nofile: 1048576
+
+  nginx-cache-4:
+    image: nginx:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cache.conf:/etc/nginx/nginx.conf:ro
+      - /mnt/cache4/disk1:/cache/disk1
+      - /mnt/cache4/disk2:/cache/disk2
+      - /mnt/cache4/disk3:/cache/disk3
+      - /mnt/cache4/disk4:/cache/disk4
+    ports:
+      - "8084:80"
+    cpus: '5'
+    mem_limit: '12g'
+    deploy:
+      resources:
+        limits:
+          cpus: '5'
+          memory: 12G
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_tw_reuse=1
+    ulimits:
+      nofile: 1048576
+
+  # Prometheus Node for NGINX metrics
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: unless-stopped
+    command: --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.enable-lifecycle --enable-feature=native-histograms --storage.tsdb.retention.time=7d
+    volumes:
+      - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  # Grafana with provisioning
+  grafana:
+    image: grafana/grafana:10.4.5
+    restart: unless-stopped
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./conf/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./conf/grafana/provisioning:/etc/grafana/provisioning:ro
+
+  # Custom cache disk metrics exporter
+  cache-metrics-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.cache-exporter
+    restart: unless-stopped
+    ports:
+      - "9199:9199"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt:/mnt:ro
+      - /proc:/host/proc:ro
+    depends_on:
+      - nginx-cache-1
+      - nginx-cache-2
+      - nginx-cache-3
+      - nginx-cache-4
+      
+  # NGINX exporters scraping stub_status endpoints from each cache node
+  exporter-cache-1:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    restart: unless-stopped
+    command: -nginx.scrape-uri http://nginx-cache-1/cache-stats
+    ports:
+      - "9113:9113"
+  exporter-cache-2:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    restart: unless-stopped
+    command: -nginx.scrape-uri http://nginx-cache-2/cache-stats
+    ports:
+      - "9114:9113"
+  exporter-cache-3:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    restart: unless-stopped
+    command: -nginx.scrape-uri http://nginx-cache-3/cache-stats
+    ports:
+      - "9115:9113"
+  exporter-cache-4:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    restart: unless-stopped
+    command: -nginx.scrape-uri http://nginx-cache-4/cache-stats
+    ports:
+      - "9116:9113"
+  
+  # Node exporter for host-level metrics (bond0, physical interfaces)
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.netdev.device-exclude=^(veth.*|docker.*|br-.*)$$'
+    ports:
+      - "9100:9100"

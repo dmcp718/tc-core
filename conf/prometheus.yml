@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  - job_name: nginx-cache-exporters
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - exporter-cache-1:9113
+          - exporter-cache-2:9113
+
+  - job_name: nginx-lb
+    metrics_path: /metrics
+    static_configs:
+      - targets: []
+  
+  - job_name: cache-disk-metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["cache-metrics-exporter:9199"]
+
+  - job_name: node
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["172.17.0.1:9100"]
+

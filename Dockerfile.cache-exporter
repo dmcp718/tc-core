@@ -1,0 +1,10 @@
+FROM python:3.9-slim
+
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+RUN pip install prometheus_client
+
+COPY cache-metrics-exporter.py /app/exporter.py
+
+WORKDIR /app
+
+CMD ["python", "/app/exporter.py"]

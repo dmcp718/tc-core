@@ -1,0 +1,56 @@
+# Example and test directories
+example/
+example2/
+QT/
+
+# Old config files
+*-fixed.conf
+nginx-single-node.conf
+proposed-2node-architecture.md
+docker-compose-single.yml
+
+# Backup directories
+netplan-backup-*/
+
+# Network configuration files (system-specific)
+01-netcfg-bond.yaml
+10-bond-lacp.yaml
+
+# Setup scripts (one-time use)
+configure-lacp-bond.sh
+fix-lacp-bond.sh
+format-disks.sh
+setup-bond-simple.sh
+verify-bond-status.sh
+
+# Test and monitoring scripts
+test-nginx-perf.sh
+monitor-cache.sh
+
+# Old configurations
+nginx-lb-fixed.conf
+nginx-cache-2node.conf
+nginx-lb-2node.conf
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Docker volumes and runtime data
+data/
+logs/
+
+# System files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+
+# IDE directories
+.vscode/
+.idea/
