@@ -1,3 +1,7 @@
+# Claude workspace files
+CLAUDE.md
+.claude/
+
 # Example and test directories
 example/
 example2/
